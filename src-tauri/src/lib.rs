@@ -21,15 +21,15 @@ use memory::MemoryManager;
 use tokio::process::Command;
 
 /// Build a tokio::process::Command for launching an agent executable.
-/// On Windows: wraps in cmd /c with proper arg handling for paths with spaces.
-/// On other platforms:直接执行 exec_path。
+/// On Windows: wraps in cmd /c with raw_arg to bypass Rust's auto-quoting for space paths.
+/// On other platforms: directly execute exec_path with tokio's default quoting.
 pub fn build_agent_command(exec_path: &str) -> Command {
     #[cfg(target_os = "windows")]
     {
-        // Use args() so tokio handles quoting for paths with spaces automatically.
-        // Resulting command line: cmd /c "C:\Path With Spaces\gemini.cmd"
+        // Use raw_arg to pass the entire /c "path" to cmd.exe bypassing Rust's
+        // automatic argument quoting that would cause double-quoting issues.
         let mut cmd = Command::new("cmd");
-        cmd.args(&["/c", exec_path]);
+        cmd.raw_arg(format!(r#"/c "{}""#, exec_path));
         cmd
     }
     #[cfg(not(target_os = "windows"))]

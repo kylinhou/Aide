@@ -1600,18 +1600,13 @@ function App() {
       setTestOutput(result);
     } catch (e: any) {
       setTestStatus("failed");
-      // Windows-specific friendly error hints
-      const errLower = e.toString().toLowerCase();
-      if (errLower.includes("无法启动可执行文件") || errLower.includes("not recognized") || errLower.includes("cannot find")) {
-        const isWindows = navigator.userAgent.includes("Windows");
-        if (isWindows) {
-          setTestOutput(e.toString() + "\n\n💡 Windows 提示：请确认路径不含中文或特殊字符，路径中如有空格请加引号，或尝试在 cmd 中手动运行此命令测试。");
-        } else {
-          setTestOutput(e.toString());
-        }
-      } else {
-        setTestOutput(e.toString());
+      let errorMsg = e.toString();
+      if (navigator.userAgent.indexOf("Windows") !== -1) {
+        errorMsg += "\n\n💡 [Windows 环境提示]:";
+        errorMsg += "\n1. 若您刚安装 CLI，请确保 npm/python 全局目录已加入系统 PATH，并重启此应用。";
+        errorMsg += "\n2. 请尝试输入完整的绝对路径，并务必加上后缀，例如: C:\\Users\\Name\\AppData\\Roaming\\npm\\gemini.cmd";
       }
+      setTestOutput(errorMsg);
     }
   };
 
