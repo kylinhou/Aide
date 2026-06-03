@@ -627,7 +627,7 @@ pub async fn handle_invoke(
                         Ok::<_, String>((status, out_buf, err_buf))
                     };
 
-                    let res_str = match timeout(Duration::from_secs(3), test_run).await {
+                    let res_str = match timeout(Duration::from_secs(10), test_run).await {
                         Ok(Ok((status, out_buf, err_buf))) => {
                             if status.success() {
                                 let stdout_str = String::from_utf8_lossy(&out_buf).trim().to_string();
@@ -649,7 +649,7 @@ pub async fn handle_invoke(
                         Ok(Err(e)) => e,
                         Err(_) => {
                             let _ = child.kill().await;
-                            "检测超时 (3秒内未响应)".to_string()
+                            "检测超时 (10秒内未响应)".to_string()
                         }
                     };
                     Ok(serde_json::to_value(res_str).unwrap())
