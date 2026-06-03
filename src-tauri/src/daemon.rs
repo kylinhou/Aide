@@ -477,13 +477,7 @@ pub async fn handle_invoke(
             use tokio::time::timeout;
             use std::time::Duration;
 
-            let mut cmd_proc = if cfg!(target_os = "windows") {
-                let mut c = tokio::process::Command::new("cmd");
-                c.args(&["/c", &command]);
-                c
-            } else {
-                tokio::process::Command::new(&command)
-            };
+            let mut cmd_proc = crate::build_agent_command(&command);
 
             cmd_proc.args(&sub_args)
                .stdin(Stdio::null())
@@ -598,13 +592,7 @@ pub async fn handle_invoke(
             use tokio::time::timeout;
             use std::time::Duration;
 
-            let mut cmd_proc = if cfg!(target_os = "windows") {
-                let mut c = tokio::process::Command::new("cmd");
-                c.args(&["/c", &exec_path]);
-                c
-            } else {
-                tokio::process::Command::new(&exec_path)
-            };
+            let mut cmd_proc = crate::build_agent_command(&exec_path);
 
             cmd_proc.args(sub_args)
                 .stdin(Stdio::null())

@@ -15,6 +15,30 @@ use supervisor::SubAgentSupervisor;
 use memory::MemoryManager;
 
 // ==========================================
+// Shared cross-platform command builder
+// ==========================================
+
+use tokio::process::Command;
+
+/// Build a tokio::process::Command for launching an agent executable.
+/// On Windows: wraps in cmd /c with proper arg handling for paths with spaces.
+/// On other platforms:直接执行 exec_path。
+pub fn build_agent_command(exec_path: &str) -> Command {
+    #[cfg(target_os = "windows")]
+    {
+        // Use args() so tokio handles quoting for paths with spaces automatically.
+        // Resulting command line: cmd /c "C:\Path With Spaces\gemini.cmd"
+        let mut cmd = Command::new("cmd");
+        cmd.args(&["/c", exec_path]);
+        cmd
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Command::new(exec_path)
+    }
+}
+
+// ==========================================
 // Tauri IPC Commands
 // ==========================================
 
@@ -145,20 +169,7 @@ async fn test_agent_availability(
     use std::process::Stdio;
     use tokio::io::AsyncReadExt;
 
-    #[cfg(target_os = "windows")]
-    use std::os::windows::process::CommandExt;
-
-    // Build command with correct argument handling for Windows cmd.exe
-    // On Windows: use raw_arg to bypass Rust's automatic quoting,
-    // which causes cmd.exe /c "path with spaces" to strip quotes incorrectly.
-    #[cfg(target_os = "windows")]
-    let mut cmd = {
-        let mut c = tokio::process::Command::new("cmd");
-        c.arg(format!("/c {}", exec_path));
-        c
-    };
-    #[cfg(not(target_os = "windows"))]
-    let mut cmd = tokio::process::Command::new(&exec_path);
+    let mut cmd = crate::build_agent_command(&exec_path);
 
     cmd.args(args)
         .stdin(Stdio::null())
@@ -366,13 +377,7 @@ async fn run_acp_terminal(
     use tokio::time::timeout;
     use std::time::Duration;
 
-    let mut cmd = if cfg!(target_os = "windows") {
-        let mut c = tokio::process::Command::new("cmd");
-        c.args(&["/c", &command]);
-        c
-    } else {
-        tokio::process::Command::new(&command)
-    };
+    let mut cmd = crate::build_agent_command(&command);
 
     cmd.args(&args)
        .stdin(Stdio::null())

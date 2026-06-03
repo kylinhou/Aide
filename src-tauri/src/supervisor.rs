@@ -72,13 +72,7 @@ impl SubAgentSupervisor {
         }
 
         // Configure cmd
-        let mut cmd = if cfg!(target_os = "windows") {
-            let mut c = Command::new("cmd");
-            c.args(&["/c", exec_path]);
-            c
-        } else {
-            Command::new(exec_path)
-        };
+        let mut cmd = crate::build_agent_command(exec_path);
 
         cmd.args(args)
             .stdin(Stdio::piped())
