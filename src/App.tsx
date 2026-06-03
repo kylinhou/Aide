@@ -820,7 +820,8 @@ function App() {
         agentId: currentAgent.agent_id,
         execPath: currentAgent.path,
         args: currentArgs,
-        envVars: envKeyName ? { [envKeyName]: envValName } : {}
+        envVars: envKeyName ? { [envKeyName]: envValName } : {},
+        cwd: workspacePathRef.current,
       });
 
       setIsAgentRunning(true);

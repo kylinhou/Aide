@@ -60,6 +60,7 @@ impl SubAgentSupervisor {
         exec_path: &str,
         args: Vec<String>,
         env_vars: HashMap<String, String>,
+        cwd: Option<String>,
     ) -> Result<(), String> {
         let mut processes = self.active_processes.lock().await;
 
@@ -83,6 +84,13 @@ impl SubAgentSupervisor {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+
+        // Set working directory if provided
+        if let Some(dir) = cwd {
+            if !dir.is_empty() {
+                cmd.current_dir(dir);
+            }
+        }
 
         // Add custom environment variables
         for (k, v) in env_vars {

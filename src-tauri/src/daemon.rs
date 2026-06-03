@@ -68,6 +68,7 @@ pub struct AgentRunRequest {
     pub exec_path: String,
     pub args: Vec<String>,
     pub env_vars: HashMap<String, String>,
+    pub cwd: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -272,6 +273,10 @@ pub async fn handle_invoke(
             let env_vars: HashMap<String, String> = serde_json::from_value(args["envVars"].clone())
                 .or_else(|_| serde_json::from_value(args["env_vars"].clone()))
                 .unwrap_or_default();
+            let cwd: Option<String> = serde_json::from_value(args["cwd"].clone())
+                .or_else(|_| serde_json::from_value(args["workspacePath"].clone()))
+                .or_else(|_| serde_json::from_value(args["workspace_path"].clone()))
+                .ok();
 
             state.supervisor.spawn_agent(
                 state.app_handle.clone(),
@@ -279,6 +284,7 @@ pub async fn handle_invoke(
                 &exec_path,
                 sub_args,
                 env_vars,
+                cwd,
             ).await
             .map(|_| serde_json::Value::Null)
             .map_err(|e| e.to_string())
@@ -805,6 +811,7 @@ async fn handle_agent_run(
         &payload.exec_path,
         payload.args,
         payload.env_vars,
+        payload.cwd,
     ).await;
 
     match res {

@@ -67,6 +67,7 @@ async fn run_subagent(
     exec_path: String,
     args: Vec<String>,
     env_vars: HashMap<String, String>,
+    cwd: Option<String>,
 ) -> Result<(), String> {
     state.supervisor.spawn_agent(
         state.app_handle.clone(),
@@ -74,6 +75,7 @@ async fn run_subagent(
         &exec_path,
         args,
         env_vars,
+        cwd,
     ).await?;
     Ok(())
 }
