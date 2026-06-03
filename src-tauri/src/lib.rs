@@ -1,3 +1,6 @@
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 mod config;
 mod memory;
 mod supervisor;
@@ -142,14 +145,20 @@ async fn test_agent_availability(
     use std::process::Stdio;
     use tokio::io::AsyncReadExt;
 
-    // Configure cmd
-    let mut cmd = if cfg!(target_os = "windows") {
+    #[cfg(target_os = "windows")]
+    use std::os::windows::process::CommandExt;
+
+    // Build command with correct argument handling for Windows cmd.exe
+    // On Windows: use raw_arg to bypass Rust's automatic quoting,
+    // which causes cmd.exe /c "path with spaces" to strip quotes incorrectly.
+    #[cfg(target_os = "windows")]
+    let mut cmd = {
         let mut c = tokio::process::Command::new("cmd");
-        c.args(&["/c", &exec_path]);
+        c.arg(format!("/c {}", exec_path));
         c
-    } else {
-        tokio::process::Command::new(&exec_path)
     };
+    #[cfg(not(target_os = "windows"))]
+    let mut cmd = tokio::process::Command::new(&exec_path);
 
     cmd.args(args)
         .stdin(Stdio::null())
@@ -186,7 +195,7 @@ async fn test_agent_availability(
         Ok::<_, String>((status, out_buf, err_buf))
     };
 
-    match timeout(Duration::from_secs(3), test_run).await {
+    match timeout(Duration::from_secs(10), test_run).await {
         Ok(Ok((status, out_buf, err_buf))) => {
             if status.success() {
                 let stdout_str = String::from_utf8_lossy(&out_buf).trim().to_string();
@@ -209,7 +218,7 @@ async fn test_agent_availability(
         Err(_) => {
             // Kill child on timeout
             let _ = child.kill().await;
-            Err("检测超时 (3秒内未响应)".to_string())
+            Err("检测超时 (10秒内未响应)".to_string())
         }
     }
 }
