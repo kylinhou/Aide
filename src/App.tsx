@@ -58,6 +58,7 @@ interface AgentTemplate {
   id: string;
   name: string;
   category: "built-in" | "preset" | "acp" | "custom";
+  protocol_type: "acp" | "stdio";
   recommendedPath: string;
   recommendedArgs: string;
   recommendedEnvKey: string;
@@ -71,6 +72,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "claude-code",
     name: "Claude",
     category: "built-in",
+    protocol_type: "stdio",
     recommendedPath: "claude",
     recommendedArgs: "-v",
     recommendedEnvKey: "ANTHROPIC_API_KEY",
@@ -82,6 +84,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "codex-code",
     name: "Codex",
     category: "built-in",
+    protocol_type: "stdio",
     recommendedPath: "codex-cli",
     recommendedArgs: "-v",
     recommendedEnvKey: "CODEX_API_KEY",
@@ -93,6 +96,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "deepseek-claude",
     name: "DeepSeek over Claude Code",
     category: "preset",
+    protocol_type: "stdio",
     recommendedPath: "claude",
     recommendedArgs: "-v",
     recommendedEnvKey: "DEEPSEEK_API_KEY",
@@ -104,6 +108,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "mimo-claude",
     name: "MiMo over Claude Code",
     category: "preset",
+    protocol_type: "stdio",
     recommendedPath: "claude",
     recommendedArgs: "-v",
     recommendedEnvKey: "MIMO_API_KEY",
@@ -115,6 +120,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "agoragentic",
     name: "Agoragentic",
     category: "acp",
+    protocol_type: "acp",
     recommendedPath: "agoragentic",
     recommendedArgs: "-v",
     recommendedEnvKey: "AGORA_API_KEY",
@@ -126,6 +132,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "amp",
     name: "Amp",
     category: "acp",
+    protocol_type: "acp",
     recommendedPath: "amp",
     recommendedArgs: "-v",
     recommendedEnvKey: "AMP_API_KEY",
@@ -137,6 +144,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "gemini-cli",
     name: "Gemini CLI",
     category: "acp",
+    protocol_type: "acp",
     recommendedPath: "gemini",
     recommendedArgs: "-v",
     recommendedEnvKey: "GEMINI_API_KEY",
@@ -148,6 +156,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "auggie-cli",
     name: "Auggie CLI",
     category: "acp",
+    protocol_type: "acp",
     recommendedPath: "auggie",
     recommendedArgs: "-v",
     recommendedEnvKey: "AUGGIE_API_KEY",
@@ -159,6 +168,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "autohand-code",
     name: "Autohand Code",
     category: "acp",
+    protocol_type: "acp",
     recommendedPath: "autohand-code",
     recommendedArgs: "-v",
     recommendedEnvKey: "AUTOHAND_API_KEY",
@@ -170,6 +180,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "cline-code",
     name: "Cline",
     category: "acp",
+    protocol_type: "acp",
     recommendedPath: "cline-cli",
     recommendedArgs: "-v",
     recommendedEnvKey: "CLINE_API_KEY",
@@ -181,6 +192,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "codebuddy-code",
     name: "Codebuddy Code",
     category: "acp",
+    protocol_type: "acp",
     recommendedPath: "codebuddy",
     recommendedArgs: "-v",
     recommendedEnvKey: "CODEBUDDY_API_KEY",
@@ -192,6 +204,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "cursor-code",
     name: "Cursor",
     category: "acp",
+    protocol_type: "acp",
     recommendedPath: "cursor-cli",
     recommendedArgs: "-v",
     recommendedEnvKey: "CURSOR_API_KEY",
@@ -203,6 +216,7 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
     id: "deepagents",
     name: "DeepAgents",
     category: "acp",
+    protocol_type: "acp",
     recommendedPath: "deepagents",
     recommendedArgs: "-v",
     recommendedEnvKey: "DEEPAGENTS_API_KEY",
@@ -708,7 +722,7 @@ function App() {
       env_vars: "{}"
     };
 
-    const isAcpMode = currentAgent.agent_id === "gemini" || currentAgent.agent_id === "google-gemini" || currentAgent.path.includes("gemini");
+    const isAcpMode = currentAgent.protocol_type === "acp";
 
     const assistantMessage = {
       role: "assistant",
@@ -800,20 +814,29 @@ function App() {
       setEnvKey(envKeyName);
       setEnvVal(envValName);
 
-      // 如果是 Gemini (ACP Mode)，我们根据选择的运行模式传递对应参数
+      // 根据 protocol_type 和 args 配置动态组装启动参数
       let currentArgs: string[] = [];
       if (isAcpMode) {
-        currentArgs.push("--acp");
-        currentArgs.push("--approval-mode");
-        if (geminiMode === "auto edit") {
-          currentArgs.push("auto_edit");
-        } else if (geminiMode === "yolo") {
-          currentArgs.push("yolo");
-        } else if (geminiMode === "plan") {
-          currentArgs.push("plan");
+        // ACP 模式：优先使用用户配置的 args，其次尝试 Gemini 兼容参数
+        if (currentAgent.args && currentAgent.args.trim()) {
+          currentArgs = currentAgent.args.trim().split(/\s+/).filter(Boolean);
+        } else {
+          // Gemini 默认参数（保留兼容）
+          currentArgs.push("--acp");
+          currentArgs.push("--approval-mode");
+          if (geminiMode === "auto edit") {
+            currentArgs.push("auto_edit");
+          } else if (geminiMode === "yolo") {
+            currentArgs.push("yolo");
+          } else if (geminiMode === "plan") {
+            currentArgs.push("plan");
+          }
         }
       } else {
-        currentArgs = ["127.0.0.1", "-c", "4"];
+        // stdio 模式：使用用户配置的 args（无硬编码 ping 参数）
+        if (currentAgent.args && currentAgent.args.trim()) {
+          currentArgs = currentAgent.args.trim().split(/\s+/).filter(Boolean);
+        }
       }
       setArgsInput(currentArgs.join(" "));
 
@@ -1363,7 +1386,7 @@ function App() {
         ]);
 
         const currentAgent = registeredAgentsRef.current.find(a => a.agent_id === selectedAgentForChatRef.current);
-        const isAcpMode = currentAgent?.agent_id === "gemini" || currentAgent?.agent_id === "google-gemini" || currentAgent?.path?.includes("gemini");
+        const isAcpMode = currentAgent?.protocol_type === "acp";
 
         if (!isAcpMode) {
           // 🟢 普通模式：原封不动走老逻辑，保持完美兼容
@@ -1456,7 +1479,7 @@ function App() {
             ]);
 
             const currentAgent = registeredAgentsRef.current.find(a => a.agent_id === selectedAgentForChatRef.current);
-            const isAcpMode = currentAgent?.agent_id === "gemini" || currentAgent?.agent_id === "google-gemini" || currentAgent?.path?.includes("gemini");
+            const isAcpMode = currentAgent?.protocol_type === "acp";
 
             if (!isAcpMode) {
               setChatThinkingStream((prev) => prev + payload.content);
@@ -1632,6 +1655,8 @@ function App() {
         path: execPathInput,
         version: testStatus === "ready" ? testOutput.substring(0, 50) : "1.0.0",
         env_vars: envVarsJson,
+        protocol_type: selectedTemplate.protocol_type,
+        args: argsInputVal || "",
       };
 
       await invoke("save_agent_to_registry", { agent: agentData });
@@ -2608,6 +2633,7 @@ function App() {
                         id: "custom-agent",
                         name: "自定义智能体 (Custom Agent)",
                         category: "custom",
+                        protocol_type: "stdio",
                         recommendedPath: "",
                         recommendedArgs: "",
                         recommendedEnvKey: "",

@@ -318,7 +318,9 @@ pub async fn handle_invoke(
                 let path: String = serde_json::from_value(args["agent"]["path"].clone()).unwrap_or_default();
                 let version: String = serde_json::from_value(args["agent"]["version"].clone()).unwrap_or_default();
                 let env_vars: Option<String> = serde_json::from_value(args["agent"]["env_vars"].clone()).unwrap_or_default();
-                config::SubAgent { agent_id, name, path, version, env_vars }
+                let protocol_type: Option<String> = serde_json::from_value(args["agent"]["protocol_type"].clone()).unwrap_or_default();
+                let args: Option<String> = serde_json::from_value(args["agent"]["args"].clone()).unwrap_or_default();
+                config::SubAgent { agent_id, name, path, version, env_vars, protocol_type, args }
             });
             config::save_registered_agent(&state.pool, &agent).await
                 .map(|_| serde_json::Value::Null)

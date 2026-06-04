@@ -15,6 +15,8 @@ pub struct SubAgent {
     pub path: String,
     pub version: String,
     pub env_vars: Option<String>, // JSON string of env key-values
+    pub protocol_type: Option<String>, // "acp" | "stdio"
+    pub args: Option<String>,          // space-separated启动参数 (如 "acp" 或 "--acp --approval-mode plan")
 }
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow, Clone)]
@@ -76,7 +78,9 @@ pub async fn init_db(app_dir: &PathBuf) -> Result<SqlitePool, sqlx::Error> {
             name TEXT NOT NULL,
             path TEXT NOT NULL,
             version TEXT NOT NULL,
-            env_vars TEXT
+            env_vars TEXT,
+            protocol_type TEXT DEFAULT 'stdio',
+            args TEXT
         );"
     ).execute(&pool).await?;
 
@@ -87,8 +91,8 @@ pub async fn init_db(app_dir: &PathBuf) -> Result<SqlitePool, sqlx::Error> {
 
     if count.0 == 0 {
         sqlx::query(
-            "INSERT INTO sub_agent_registry (agent_id, name, path, version, env_vars)
-             VALUES ('claude-code', 'Claude Code', 'claude', '1.0.0', '{\"ANTHROPIC_API_KEY\":\"\"}');"
+            "INSERT INTO sub_agent_registry (agent_id, name, path, version, env_vars, protocol_type, args)
+             VALUES ('claude-code', 'Claude Code', 'claude', '1.0.0', '{\"ANTHROPIC_API_KEY\":\"\"}', 'stdio', '');"
         ).execute(&pool).await?;
     }
 
@@ -118,7 +122,7 @@ pub async fn set_config(pool: &SqlitePool, key: &str, value: &str) -> Result<(),
 
 pub async fn list_registered_agents(pool: &SqlitePool) -> Result<Vec<SubAgent>, sqlx::Error> {
     sqlx::query_as::<_, SubAgent>(
-        "SELECT agent_id, name, path, version, env_vars FROM sub_agent_registry"
+        "SELECT agent_id, name, path, version, env_vars, protocol_type, args FROM sub_agent_registry"
     )
     .fetch_all(pool)
     .await
@@ -126,14 +130,16 @@ pub async fn list_registered_agents(pool: &SqlitePool) -> Result<Vec<SubAgent>, 
 
 pub async fn save_registered_agent(pool: &SqlitePool, agent: &SubAgent) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "INSERT OR REPLACE INTO sub_agent_registry (agent_id, name, path, version, env_vars)
-         VALUES (?, ?, ?, ?, ?)"
+        "INSERT OR REPLACE INTO sub_agent_registry (agent_id, name, path, version, env_vars, protocol_type, args)
+         VALUES (?, ?, ?, ?, ?, ?, ?)"
     )
     .bind(&agent.agent_id)
     .bind(&agent.name)
     .bind(&agent.path)
     .bind(&agent.version)
     .bind(&agent.env_vars)
+    .bind(&agent.protocol_type)
+    .bind(&agent.args)
     .execute(pool)
     .await?;
     Ok(())
