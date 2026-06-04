@@ -512,6 +512,7 @@ function App() {
       }
     } catch (err) {
       console.error("Failed to select workspace directory:", err);
+      alert("无法打开文件夹选择对话框：请检查是否以正确的应用模式运行，或在设置中手动输入工作区路径。");
     }
   };
 

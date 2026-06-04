@@ -526,28 +526,17 @@ async fn browse_filesystem(path: Option<String>) -> Result<serde_json::Value, St
 }
 
 #[tauri::command]
-async fn select_workspace_dialog() -> Result<Option<String>, String> {
-    use std::process::Command;
-    let output = Command::new("zenity")
-        .args(&["--file-selection", "--directory", "--title=选择工作区目录"])
-        .output();
-        
-    match output {
-        Ok(out) => {
-            if out.status.success() {
-                let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                if !path.is_empty() {
-                    Ok(Some(path))
-                } else {
-                    Ok(None)
-                }
-            } else {
-                Ok(None)
-            }
-        }
-        Err(e) => {
-            Err(format!("Failed to run zenity dialog: {}", e))
-        }
+async fn select_workspace_dialog(app: AppHandle) -> Result<Option<String>, String> {
+    use rfd::AsyncFileDialog;
+
+    match AsyncFileDialog::new()
+        .set_title("选择工作区目录")
+        .set_directory(std::env::current_dir().unwrap_or_default())
+        .pick_folder()
+        .await
+    {
+        Some(handle) => Ok(Some(handle.path().to_string_lossy().to_string())),
+        None => Ok(None),
     }
 }
 
